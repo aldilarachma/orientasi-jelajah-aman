@@ -11,3 +11,4 @@ kota: string;
 suhu: number;
 tingkatAQI: TingkatAQI;
 }
+// fix commit tugas
