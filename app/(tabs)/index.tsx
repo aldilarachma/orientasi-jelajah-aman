@@ -1,98 +1,84 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Button, Text, useWindowDimensions, View } from "react-native";
+import { Link } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import SearchBox from "../../components/SearchBox";
+import WeatherCard from "../../components/WeatherCard";
+import { useDebounce } from "../../hooks/use-debounce";
+import { cariKota } from "../../services/geocodingService";
+import type { HasilGeocoding } from "../../types/geocoding";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+export default function HalamanUtama() {
+	const [teksCari, setTeksCari] = useState("");
+	const [hasil, setHasil] = useState<HasilGeocoding[]>([]);
+	const [sedangMemuat, setSedangMemuat] = useState(false);
+	const [pesanError, setPesanError] = useState<string | null>(null);
+	const [nomorPercobaan, setNomorPercobaan] = useState(0);
+	const teksTertunda = useDebounce(teksCari, 800);
+	const { width } = useWindowDimensions();
+	const padding = width > 768 ? 32 : 16;
 
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+	useEffect(() => {
+		const namaKota = teksTertunda.trim();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
+		if (namaKota.length === 0) {
+			setHasil([]);
+			setPesanError(null);
+			setSedangMemuat(false);
+			return;
+		}
+
+		let masihAktif = true;
+		setSedangMemuat(true);
+		setPesanError(null);
+
+		async function ambilData() {
+			try {
+				const data = await cariKota(namaKota);
+				if (masihAktif) setHasil(data);
+			} catch {
+				if (masihAktif) {
+					setPesanError("Gagal mengambil data. Periksa koneksi internet Anda.");
+					setHasil([]);
+				}
+			} finally {
+				if (masihAktif) setSedangMemuat(false);
+			}
+		}
+
+		void ambilData();
+		return () => {
+			masihAktif = false;
+		};
+	}, [teksTertunda, nomorPercobaan]);
+
+	const pencarianSelesai = teksTertunda.trim().length > 0 && !sedangMemuat && !pesanError;
+	const tampilkanStatusKosong = pencarianSelesai && hasil.length === 0;
+
+	return (
+		<SafeAreaView style={{ flex: 1, padding, gap: 16 }}>
+			<SearchBox onCari={setTeksCari} />
+			{sedangMemuat ? <ActivityIndicator accessibilityLabel="Memuat hasil pencarian kota" /> : null}
+			{pesanError ? (
+				<View style={{ gap: 8 }}>
+					<Text>{pesanError}</Text>
+					<Button
+						title="Coba Lagi"
+						accessibilityLabel="Coba lagi mencari kota"
+						onPress={() => setNomorPercobaan((percobaan) => percobaan + 1)}
+					/>
+				</View>
+			) : null}
+			{tampilkanStatusKosong ? (
+				<Text>Kota tidak ditemukan</Text>
+			) : null}
+			{hasil.map((kota) => (
+				<Link
+					key={kota.id}
+					href={{ pathname: "/detail/[kota]", params: { kota: kota.name } }}>
+					<WeatherCard kota={kota.name} suhu={29} tingkatAQI="BAIK" />
+				</Link>
+			))}
+		</SafeAreaView>
+	);
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
