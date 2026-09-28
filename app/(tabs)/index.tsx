@@ -61,7 +61,9 @@ export default function HalamanUtama() {
 			{sedangMemuat ? <ActivityIndicator accessibilityLabel="Memuat hasil pencarian kota" /> : null}
 			{pesanError ? (
 				<View style={{ gap: 8 }}>
-					<Text>{pesanError}</Text>
+					<Text accessibilityLabel="Pesan kesalahan pencarian kota" accessibilityRole="alert">
+						{pesanError}
+					</Text>
 					<Button
 						title="Coba Lagi"
 						accessibilityLabel="Coba lagi mencari kota"
@@ -70,8 +72,9 @@ export default function HalamanUtama() {
 				</View>
 			) : null}
 			{tampilkanStatusKosong ? (
-				<Text>Kota tidak ditemukan</Text>
+				<Text accessibilityLabel="Tidak ada kota ditemukan">Kota tidak ditemukan</Text>
 			) : null}
+			{pencarianSelesai ? <Text>Ditemukan {hasil.length} kota</Text> : null}
 			{hasil.map((kota) => (
 				<Link
 					key={kota.id}
