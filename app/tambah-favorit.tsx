@@ -1,14 +1,30 @@
-import { Button, Text } from "react-native";
+// src/app/tambah-favorit.tsx
+import { View, Text, Button } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { tambahFavorit } from "../services/favoritStorage";
 
 export default function ModalTambahFavorit() {
-  const { kota } = useLocalSearchParams<{ kota?: string }>();
+  const { id, nama, lat, lon } = useLocalSearchParams<{
+    id: string;
+    nama: string;
+    lat: string;
+    lon: string;
+  }>();
+
+  async function simpan() {
+    await tambahFavorit({
+      id: Number(id),
+      nama,
+      latitude: Number(lat),
+      longitude: Number(lon),
+    });
+    router.back();
+  }
 
   return (
-    <SafeAreaView style={{ flex: 1, padding: 16, gap: 16 }}>
-      <Text>{kota ? `Tambahkan ${kota} ke daftar favorit?` : "Tambahkan kota ke daftar favorit?"}</Text>
-      <Button title="Simpan" accessibilityLabel="Simpan kota ke favorit" onPress={() => router.back()} />
-    </SafeAreaView>
+    <View style={{ padding: 16, gap: 16 }}>
+      <Text>Tambahkan {nama} ke daftar favorit?</Text>
+      <Button title="Simpan" onPress={simpan} />
+    </View>
   );
 }
